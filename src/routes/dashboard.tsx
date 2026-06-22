@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useLocation, useNavigate, Outlet } from "react-router-dom";
 import {
   Users,
   GraduationCap,
@@ -12,24 +13,9 @@ import {
 import { Sidebar } from "@/components/dashboard/layout/sidebar";
 import { MobileNav } from "@/components/dashboard/layout/mobile-nav";
 
-// Tabs Imports
-import { Overview } from "@/components/dashboard/tabs/overview";
-import { TeachersTab } from "@/components/dashboard/tabs/teachers";
-import { ClassesTab } from "@/components/dashboard/tabs/classes";
-import { SubjectsTab } from "@/components/dashboard/tabs/subjects";
-import { PeriodsTab } from "@/components/dashboard/tabs/periods";
-import { TimetableTab } from "@/components/dashboard/tabs/timetable";
-
-export type Tab =
-  | "overview"
-  | "teachers"
-  | "classes"
-  | "subjects"
-  | "periods"
-  | "timetable";
-
 export default function Dashboard() {
-  const [tab, setTab] = useState<Tab>("overview");
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const nav = [
     { id: "overview", label: "Overview", icon: Sparkles },
@@ -40,20 +26,56 @@ export default function Dashboard() {
     { id: "timetable", label: "Generate Timetable", icon: Table },
   ];
 
+  // URL se current tab nikalne ka logic
+  // Agar path "/dashboard/teachers" hai, toh "teachers" nikalega
+  // Agar path sirf "/dashboard" ya "/dashboard/" hai, toh "overview" manega
+  const pathParts = location.pathname.split("/").filter(Boolean);
+  const activeTab =
+    pathParts.length === 1 && pathParts[0] === "dashboard"
+      ? "overview"
+      : pathParts[pathParts.length - 1];
+
+  // Tab click hone par route change karne ka function
+  const handleNavClick = (id: string) => {
+    if (id === "overview") {
+      navigate("/dashboard");
+    } else {
+      navigate(`/dashboard/${id}`);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
-      <Sidebar nav={nav} activeTab={tab} setTab={setTab as any} />
+    <div className="flex h-screen w-full overflow-hidden bg-background text-foreground selection:bg-primary/20">
+      {/* Ambient Background Glows */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="absolute -left-[10%] -top-[10%] h-[500px] w-[500px] rounded-full bg-primary/5 blur-[120px]" />
+        <div className="absolute -right-[5%] bottom-[20%] h-[400px] w-[400px] rounded-full bg-blue-500/5 blur-[100px]" />
+      </div>
 
-      <main className="flex-1 overflow-x-hidden relative">
-        <MobileNav nav={nav} activeTab={tab} setTab={setTab as any} />
+      {/* Desktop Sidebar */}
+      <Sidebar nav={nav} activeTab={activeTab} setTab={handleNavClick} />
 
-        <div className="mx-auto max-w-6xl px-6 pb-10 pt-24 md:py-10 md:px-10">
-          {tab === "overview" && <Overview onJump={setTab as any} />}
-          {tab === "teachers" && <TeachersTab />}
-          {tab === "classes" && <ClassesTab />}
-          {tab === "subjects" && <SubjectsTab />}
-          {tab === "periods" && <PeriodsTab />}
-          {tab === "timetable" && <TimetableTab />}
+      {/* Main Content Area */}
+      <main className="relative z-10 flex flex-1 flex-col overflow-x-hidden overflow-y-auto scroll-smooth">
+        {/* Mobile Navigation Header */}
+        <MobileNav nav={nav} activeTab={activeTab} setTab={handleNavClick} />
+
+        {/* Content Wrapper */}
+        <div className="mx-auto w-full max-w-6xl px-5 pb-24 pt-24 md:px-10 md:py-12">
+          <AnimatePresence mode="wait">
+            {/* key={location.pathname} zaroori hai, ye Framer ko batata hai ki route change ho gaya hai */}
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 15, filter: "blur(4px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: -15, filter: "blur(4px)" }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              className="w-full"
+            >
+              {/* Magic Happens Here: Jo bhi route active hoga, uska component yahan render hoga */}
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
     </div>

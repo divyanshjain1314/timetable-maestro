@@ -1,5 +1,14 @@
 import { useMemo, useState } from "react";
-import { Table, Sparkles, FileSpreadsheet } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Table,
+  Sparkles,
+  FileSpreadsheet,
+  Printer,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
 import {
   useClasses,
   usePeriods,
@@ -26,13 +35,22 @@ export function TimetableTab() {
   const [periods] = usePeriods();
   const [teachers] = useTeachers();
   const [school] = useSchool();
+
   const [tt, setTt] = useState<Timetable | null>(null);
   const [selected, setSelected] = useState<string>("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [hoveredTeacher, setHoveredTeacher] = useState<string | null>(null);
 
   const generate = () => {
-    const next = generateTimetable(classes, subjects, periods, teachers);
-    setTt(next);
-    setSelected(classes[0]?.name ?? "");
+    // Show premium loading state for perceived value
+    setIsGenerating(true);
+
+    setTimeout(() => {
+      const next = generateTimetable(classes, subjects, periods, teachers);
+      setTt(next);
+      setSelected(classes[0]?.name ?? "");
+      setIsGenerating(false);
+    }, 800);
   };
 
   const download = (format: "class" | "master") => {
@@ -40,138 +58,284 @@ export function TimetableTab() {
     exportTimetableExcel(school, tt, classes, periods, format);
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   const activeGrid = useMemo(
     () => (tt && selected ? tt[selected] : null),
     [tt, selected],
   );
 
+  // Calculate Quick Stats
+  const stats = useMemo(() => {
+    if (!activeGrid) return null;
+    const total = DAYS.length * periods.length;
+    let filled = 0;
+    activeGrid.forEach((day) => {
+      day.forEach((period) => {
+        if (period) filled++;
+      });
+    });
+    return {
+      total,
+      filled,
+      empty: total - filled,
+      percentage: Math.round((filled / total) * 100) || 0,
+    };
+  }, [activeGrid, periods.length]);
+
   return (
-    <>
-      <SectionHeader
-        title="Generate Timetable"
-        desc="Auto-build a clash-free schedule for all classes."
-        action={
-          <div className="flex gap-2">
-            <PrimaryBtn onClick={generate}>
-              <Sparkles className="h-4 w-4" /> {tt ? "Regenerate" : "Generate"}
-            </PrimaryBtn>
+    <div className="print:m-0 print:p-0">
+      {/* Hide Header & Actions during Print */}
+      <div className="print:hidden">
+        <SectionHeader
+          title="Generate Timetable"
+          desc="Auto-build a clash-free schedule for all classes."
+          action={
+            <div className="flex flex-wrap gap-2.5">
+              <PrimaryBtn onClick={generate} disabled={isGenerating}>
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                {tt ? "Regenerate" : "Generate"}
+              </PrimaryBtn>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  disabled={!tt}
-                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-40"
-                >
-                  <FileSpreadsheet className="h-4 w-4" /> Export
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px]">
-                <DropdownMenuItem
-                  className="cursor-pointer"
-                  onClick={() => download("class")}
-                >
-                  Class-wise Format
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="cursor-pointer"
-                  onClick={() => download("master")}
-                >
-                  Master Format (Day-wise)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        }
-      />
+              {tt && (
+                <>
+                  <button
+                    onClick={handlePrint}
+                    className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold shadow-sm transition-all hover:bg-secondary hover:text-foreground text-muted-foreground"
+                  >
+                    <Printer className="h-4 w-4" /> Print
+                  </button>
 
-      {!tt && (
-        <Card>
-          <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
-              <Table className="h-7 w-7" />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold shadow-sm transition-all hover:bg-secondary hover:text-foreground text-muted-foreground">
+                        <FileSpreadsheet className="h-4 w-4" /> Export
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[200px]">
+                      <DropdownMenuItem
+                        className="cursor-pointer font-medium"
+                        onClick={() => download("class")}
+                      >
+                        Class-wise Format
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="cursor-pointer font-medium"
+                        onClick={() => download("master")}
+                      >
+                        Master Format (Day-wise)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              )}
             </div>
-            <h3 className="font-serif text-xl font-semibold">
-              No timetable yet
-            </h3>
-            <p className="mt-1 max-w-md text-sm text-muted-foreground">
-              Click Generate to build a six-day, seven-period schedule from your
-              teachers and subjects.
+          }
+        />
+      </div>
+
+      <AnimatePresence mode="wait">
+        {!tt && !isGenerating && (
+          <motion.div
+            key="empty"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="print:hidden"
+          >
+            <Card>
+              <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
+                <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary/80 text-muted-foreground ring-1 ring-border/50">
+                  <Table className="h-8 w-8" />
+                </div>
+                <h3 className="font-serif text-2xl font-bold text-foreground">
+                  No timetable generated yet
+                </h3>
+                <p className="mt-2 max-w-md text-[15px] text-muted-foreground">
+                  Our smart algorithm resolves teacher clashes and balances
+                  workloads. Click Generate to build your 6-day schedule.
+                </p>
+              </div>
+            </Card>
+          </motion.div>
+        )}
+
+        {isGenerating && (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center justify-center py-32 print:hidden"
+          >
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="mt-4 animate-pulse font-medium text-muted-foreground">
+              Running clash-resolution algorithm...
             </p>
-          </div>
-        </Card>
-      )}
+          </motion.div>
+        )}
 
-      {tt && (
-        <>
-          <div className="mb-4 flex flex-wrap gap-2">
-            {classes.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setSelected(c.name)}
-                className={`rounded-xl px-3.5 py-1.5 text-sm font-medium ${selected === c.name ? "text-primary-foreground" : "border border-border bg-card hover:bg-secondary"}`}
-                style={
-                  selected === c.name
-                    ? { background: "var(--gradient-hero)" }
-                    : undefined
-                }
+        {tt && !isGenerating && (
+          <motion.div
+            key="result"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            {/* Class Chips & Quick Stats (Hidden on Print) */}
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between print:hidden">
+              <div
+                className="flex gap-2 overflow-x-auto pb-2 scroll-smooth"
+                style={{ scrollbarWidth: "none" }} // Hide scrollbar for a clean look
               >
-                Class {c.name}
-              </button>
-            ))}
-          </div>
+                {classes.map((c) => {
+                  const active = selected === c.name;
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelected(c.name)}
+                      className={`relative flex-shrink-0 rounded-xl px-5 py-2 text-sm font-bold transition-all ${
+                        active
+                          ? "text-primary-foreground shadow-md"
+                          : "border border-border/60 bg-card text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      }`}
+                    >
+                      {active && (
+                        <motion.div
+                          layoutId="active-class-pill"
+                          className="absolute inset-0 rounded-xl"
+                          style={{ background: "var(--gradient-hero)" }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 300,
+                            damping: 25,
+                          }}
+                        />
+                      )}
+                      <span className="relative z-10">Class {c.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
-          {activeGrid && (
-            <div
-              className="overflow-x-auto rounded-2xl border border-border bg-card"
-              style={{ boxShadow: "var(--shadow-soft)" }}
-            >
-              <table className="w-full min-w-[900px] text-sm">
-                <thead>
-                  <tr className="bg-secondary text-left text-xs uppercase tracking-wider text-muted-foreground">
-                    <th className="px-4 py-3">Day / Period</th>
-                    {periods.map((p) => (
-                      <th key={p.id} className="px-4 py-3">
-                        <div className="font-semibold text-foreground">
-                          {p.label}
-                        </div>
-                        <div className="font-mono text-[10px]">{p.time}</div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {DAYS.map((d, di) => (
-                    <tr key={d} className="border-t border-border">
-                      <td className="px-4 py-3 font-semibold">{d}</td>
-                      {periods.map((p, pi) => {
-                        const cell = activeGrid[di]?.[pi];
-                        return (
-                          <td key={p.id} className="px-4 py-3 align-top">
-                            {cell ? (
-                              <div className="rounded-lg bg-accent/40 px-2 py-1.5">
-                                <div className="font-medium text-foreground">
-                                  {cell.subject}
-                                </div>
-                                <div className="text-[11px] text-muted-foreground">
-                                  {cell.teacher}
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground/40">
-                                —
-                              </span>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {/* Quick Stats Card */}
+              {stats && (
+                <div className="flex shrink-0 items-center gap-4 rounded-2xl border border-border/50 bg-card px-4 py-3 shadow-sm">
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Utilization
+                    </span>
+                    <span className="text-sm font-bold text-foreground">
+                      {stats.percentage}% Filled
+                    </span>
+                  </div>
+                  <div className="h-8 w-px bg-border/60" />
+                  <div className="flex gap-3 text-sm">
+                    <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span className="font-bold">{stats.filled}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                      <AlertCircle className="h-4 w-4" />
+                      <span className="font-bold">{stats.empty}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </>
-      )}
-    </>
+
+            {/* Timetable Grid */}
+            {activeGrid && (
+              <div className="print:mt-0 print:border-none print:shadow-none overflow-x-auto rounded-[1.5rem] border border-border/60 bg-card shadow-sm">
+                {/* Print Only Header (Hidden on Web) */}
+                <div className="hidden print:block pb-4 text-center">
+                  <h1 className="text-2xl font-bold">{school}</h1>
+                  <h2 className="text-lg text-gray-600">
+                    Class {selected} Timetable
+                  </h2>
+                </div>
+
+                <table className="w-full min-w-[900px] text-sm print:min-w-full">
+                  <thead>
+                    <tr className="border-b border-border/60 bg-secondary/50 text-left text-xs uppercase tracking-wider text-muted-foreground print:bg-gray-100">
+                      <th className="sticky left-0 z-20 bg-secondary/50 px-5 py-4 font-bold print:bg-gray-100 print:text-black">
+                        Day / Period
+                      </th>
+                      {periods.map((p) => (
+                        <th key={p.id} className="px-4 py-4 print:text-black">
+                          <div className="font-bold text-foreground print:text-black">
+                            {p.label}
+                          </div>
+                          <div className="mt-0.5 font-mono text-[10px] opacity-70">
+                            {p.time}
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {DAYS.map((d, di) => (
+                      <tr
+                        key={d}
+                        className="group/row hover:bg-secondary/20 transition-colors print:hover:bg-transparent"
+                      >
+                        <td className="sticky left-0 z-10 bg-card px-5 py-4 font-bold text-foreground group-hover/row:bg-secondary/10 print:bg-white print:text-black">
+                          {d}
+                        </td>
+                        {periods.map((p, pi) => {
+                          const cell = activeGrid[di]?.[pi];
+                          const isHovered =
+                            hoveredTeacher && cell?.teacher === hoveredTeacher;
+
+                          return (
+                            <td key={p.id} className="px-3 py-3 align-top">
+                              {cell ? (
+                                <div
+                                  onMouseEnter={() =>
+                                    setHoveredTeacher(cell.teacher)
+                                  }
+                                  onMouseLeave={() => setHoveredTeacher(null)}
+                                  className={`relative overflow-hidden rounded-xl border p-2.5 transition-all duration-200 cursor-default ${
+                                    isHovered
+                                      ? "border-primary/50 bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.2)] scale-[1.02] z-10 print:scale-100 print:shadow-none"
+                                      : "border-border/40 bg-secondary/40 hover:border-border print:border-gray-300 print:bg-white"
+                                  }`}
+                                >
+                                  {isHovered && (
+                                    <div className="absolute inset-0 bg-primary/5 print:hidden" />
+                                  )}
+                                  <div className="relative z-10 font-bold text-foreground print:text-black">
+                                    {cell.subject}
+                                  </div>
+                                  <div className="relative z-10 mt-1 text-[11px] font-medium text-muted-foreground print:text-gray-600">
+                                    {cell.teacher}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex h-full min-h-[64px] items-center justify-center rounded-xl border border-dashed border-border/40 bg-transparent print:border-gray-200">
+                                  <span className="text-muted-foreground/30 print:text-gray-300">
+                                    —
+                                  </span>
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

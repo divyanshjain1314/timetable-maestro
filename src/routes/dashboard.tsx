@@ -13,6 +13,8 @@ import {
   FileSpreadsheet,
   Sparkles,
   ArrowLeft,
+  X,
+  Menu,
 } from "lucide-react";
 import {
   useClasses,
@@ -26,12 +28,11 @@ import { DAYS, type Timetable } from "@/lib/defaults";
 import { generateTimetable } from "@/lib/generator";
 import { exportTimetableExcel } from "@/lib/excel";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Tab =
   | "overview"
@@ -44,6 +45,8 @@ type Tab =
 export default function Dashboard() {
   const [tab, setTab] = useState<Tab>("overview");
   const [school, setSchool] = useSchool();
+  // Mobile menu ke liye naya state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const nav: { id: Tab; label: string; icon: typeof Users }[] = [
     { id: "overview", label: "Overview", icon: Sparkles },
@@ -56,6 +59,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
+      {/* --- DESKTOP SIDEBAR (Hidden on Mobile) --- */}
       <aside
         className="sticky top-0 hidden h-screen w-72 shrink-0 flex-col border-r md:flex"
         style={{
@@ -84,7 +88,7 @@ export default function Dashboard() {
                 onClick={() => setTab(n.id)}
                 className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
                   active
-                    ? "text-white"
+                    ? "text-white shadow-md"
                     : "text-white/70 hover:bg-white/5 hover:text-white"
                 }`}
                 style={
@@ -100,7 +104,7 @@ export default function Dashboard() {
         <div className="border-t border-white/10 p-4 text-xs text-white/40">
           <Link
             to="/"
-            className="inline-flex items-center gap-1 hover:text-white"
+            className="inline-flex items-center gap-1 hover:text-white transition-colors"
           >
             <ArrowLeft className="h-3 w-3" /> Back to home
           </Link>
@@ -108,20 +112,86 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-x-hidden">
-        <div className="border-b bg-card/50 px-6 py-4 backdrop-blur md:hidden">
-          <select
-            value={tab}
-            onChange={(e) => setTab(e.target.value as Tab)}
-            className="w-full rounded-lg border border-border bg-card px-3 py-2"
+      <main className="flex-1 overflow-x-hidden relative">
+        {/* --- MOBILE HEADER (Hamburger Menu) --- */}
+        <div className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-border bg-background/80 px-5 backdrop-blur-xl md:hidden">
+          {/* Left: Logo & School Name */}
+          <div className="flex items-center gap-3">
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-xl shadow-sm"
+              style={{ background: "var(--gradient-hero)" }}
+            >
+              <School className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <span className="max-w-[150px] truncate font-serif text-lg font-semibold text-foreground sm:max-w-[200px]">
+              {school || "Timetable"}
+            </span>
+          </div>
+
+          {/* Right: Hamburger Icon */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
           >
-            {nav.map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.label}
-              </option>
-            ))}
-          </select>
+            {mobileMenuOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
+          </button>
         </div>
+
+        {/* --- MOBILE DROPDOWN MENU --- */}
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 top-16 z-40 bg-background/95 backdrop-blur-sm md:hidden">
+            <div className="flex flex-col border-b border-border bg-card p-5 shadow-2xl animate-in slide-in-from-top-2 duration-200">
+              {/* Edit School Name inside menu */}
+              <div className="mb-6 flex items-center gap-3 rounded-xl border border-border bg-secondary/50 px-4 py-3">
+                <School className="h-5 w-5 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={school}
+                  onChange={(e) => setSchool(e.target.value)}
+                  placeholder="Enter School Name"
+                  className="w-full bg-transparent font-medium text-foreground outline-none"
+                />
+              </div>
+
+              {/* Navigation Links */}
+              <nav className="flex flex-col gap-2">
+                {nav.map((n) => {
+                  const active = tab === n.id;
+                  return (
+                    <button
+                      key={n.id}
+                      onClick={() => {
+                        setTab(n.id);
+                        setMobileMenuOpen(false); // Tab change hote hi menu band
+                      }}
+                      className={`flex items-center gap-3 rounded-xl px-4 py-3.5 text-base font-medium transition-all ${
+                        active
+                          ? "text-primary-foreground shadow-md"
+                          : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      }`}
+                      style={
+                        active
+                          ? { background: "var(--gradient-hero)" }
+                          : undefined
+                      }
+                    >
+                      <n.icon
+                        className={`h-5 w-5 ${active ? "" : "opacity-70"}`}
+                      />
+                      {n.label}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          </div>
+        )}
+
+        {/* --- MAIN CONTENT AREA --- */}
         <div className="mx-auto max-w-6xl px-6 py-10 md:px-10">
           {tab === "overview" && <Overview onJump={setTab} />}
           {tab === "teachers" && <TeachersTab />}
@@ -632,19 +702,15 @@ function TimetableTab() {
   const [tt, setTt] = useState<Timetable | null>(null);
   const [selected, setSelected] = useState<string>("");
 
-  // Naya state export format ko track karne ke liye
-  const [exportFormat, setExportFormat] = useState<"class" | "master">("class");
-
   const generate = () => {
     const next = generateTimetable(classes, subjects, periods, teachers);
     setTt(next);
     setSelected(classes[0]?.name ?? "");
   };
 
-  const download = () => {
+  const download = (format: "class" | "master") => {
     if (!tt) return;
-    // Download karte time format variable bhi pass kar rahe hain
-    exportTimetableExcel(school, tt, classes, periods, exportFormat);
+    exportTimetableExcel(school, tt, classes, periods, format);
   };
 
   const activeGrid = useMemo(
@@ -664,32 +730,31 @@ function TimetableTab() {
             </PrimaryBtn>
 
             {/* New Download Controls */}
-            <div className="flex items-center gap-2">
-              <Select
-                value={exportFormat}
-                onValueChange={(val) =>
-                  setExportFormat(val as "class" | "master")
-                }
-              >
-                <SelectTrigger className="w-[200px] bg-card">
-                  <SelectValue placeholder="Select Format" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="class">Class-wise Format</SelectItem>
-                  <SelectItem value="master">
-                    Master Format (Day-wise)
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  disabled={!tt}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-40"
+                >
+                  <FileSpreadsheet className="h-4 w-4" /> Export
+                </button>
+              </DropdownMenuTrigger>
 
-              <button
-                onClick={download}
-                disabled={!tt}
-                className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-40"
-              >
-                <FileSpreadsheet className="h-4 w-4" /> Export
-              </button>
-            </div>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => download("class")}
+                >
+                  Class-wise Format
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => download("master")}
+                >
+                  Master Format (Day-wise)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         }
       />

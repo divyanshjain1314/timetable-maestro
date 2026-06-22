@@ -625,14 +625,19 @@ function TimetableTab() {
   const [tt, setTt] = useState<Timetable | null>(null);
   const [selected, setSelected] = useState<string>("");
 
+  // Naya state export format ko track karne ke liye
+  const [exportFormat, setExportFormat] = useState<"class" | "master">("class");
+
   const generate = () => {
     const next = generateTimetable(classes, subjects, periods, teachers);
     setTt(next);
     setSelected(classes[0]?.name ?? "");
   };
+
   const download = () => {
     if (!tt) return;
-    exportTimetableExcel(school, tt, classes, periods);
+    // Download karte time format variable bhi pass kar rahe hain
+    exportTimetableExcel(school, tt, classes, periods, exportFormat);
   };
 
   const activeGrid = useMemo(
@@ -646,17 +651,32 @@ function TimetableTab() {
         title="Generate Timetable"
         desc="Auto-build a clash-free schedule for all classes."
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-3 items-center">
             <PrimaryBtn onClick={generate}>
               <Sparkles className="h-4 w-4" /> {tt ? "Regenerate" : "Generate"}
             </PrimaryBtn>
-            <button
-              onClick={download}
-              disabled={!tt}
-              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-40"
-            >
-              <FileSpreadsheet className="h-4 w-4" /> Download Excel
-            </button>
+
+            {/* New Download Controls */}
+            <div className="flex items-center rounded-xl border border-border bg-card p-1 shadow-sm">
+              <select
+                value={exportFormat}
+                onChange={(e) =>
+                  setExportFormat(e.target.value as "class" | "master")
+                }
+                className="bg-transparent text-sm font-medium text-foreground outline-none px-3 py-1.5 cursor-pointer rounded-lg hover:bg-secondary"
+              >
+                <option value="class">Class-wise Format</option>
+                <option value="master">Master Format (Day-wise)</option>
+              </select>
+              <div className="w-[1px] h-5 bg-border mx-1"></div>
+              <button
+                onClick={download}
+                disabled={!tt}
+                className="inline-flex items-center gap-2 px-4 py-1.5 text-sm font-semibold hover:bg-secondary disabled:opacity-40 rounded-lg text-foreground transition-colors"
+              >
+                <FileSpreadsheet className="h-4 w-4" /> Export
+              </button>
+            </div>
           </div>
         }
       />

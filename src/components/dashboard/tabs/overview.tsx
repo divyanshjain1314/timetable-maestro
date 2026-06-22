@@ -1,4 +1,11 @@
-import { Users, GraduationCap, BookOpen, Clock } from "lucide-react";
+import {
+  Users,
+  GraduationCap,
+  BookOpen,
+  Clock,
+  Sparkles,
+  ArrowRight,
+} from "lucide-react";
 import { useClasses, usePeriods, useSubjects, useTeachers } from "@/lib/store";
 import { SectionHeader } from "@/components/ui/section-header";
 
@@ -60,26 +67,33 @@ export function Overview({ onJump }: { onJump: (tab: string) => void }) {
       </div>
 
       <div
-        className="mt-8 rounded-2xl p-8 text-primary-foreground"
+        className="relative mt-8 overflow-hidden rounded-2xl p-8 text-primary-foreground transition-all hover:shadow-lg"
         style={{
           background: "var(--gradient-hero)",
           boxShadow: "var(--shadow-elegant)",
         }}
       >
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        {/* Background blur effect for a premium feel */}
+        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-6">
           <div>
-            <h2 className="font-serif text-2xl font-semibold">
+            <h2 className="flex items-center gap-2 font-serif text-2xl font-semibold">
+              <Sparkles className="h-5 w-5 text-white/90" />
               Ready to generate?
             </h2>
-            <p className="mt-1 text-white/80">
-              Auto-build a clash-free timetable and export to Excel.
+            <p className="mt-2 max-w-md text-white/80">
+              Auto-build a clash-free timetable and export it directly to Excel
+              in one click.
             </p>
           </div>
           <button
             onClick={() => onJump("timetable")}
-            className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-foreground hover:bg-white/90 transition-colors"
+            // Dark mode text fix: Changed 'text-foreground' to 'text-slate-900'
+            className="group flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-bold text-slate-900 shadow-sm transition-all hover:scale-[1.02] hover:bg-white/90 active:scale-95"
           >
-            Open Generator →
+            Open Generator
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </button>
         </div>
       </div>

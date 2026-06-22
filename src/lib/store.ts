@@ -11,6 +11,17 @@ import {
   type Teacher,
 } from "./defaults";
 
+export type Substitution = {
+  id: string;
+  date: string;
+  absentTeacher: string;
+  proxyAssignments: {
+    periodId: string;
+    proxyTeacher: string;
+    classId: string;
+  }[];
+};
+
 // 1. Subscription Listener: Doosre tabs aur current tab me changes sunne ke liye
 function subscribe(callback: () => void) {
   if (typeof window === "undefined") return () => {};
@@ -80,3 +91,40 @@ export const usePeriods = () =>
   useLS<PeriodSlot[]>("tt.periods", DEFAULT_PERIODS);
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
+
+// Naya hook for Substitutions
+export const useSubstitutions = () =>
+  useLS<Substitution[]>("tt.substitutions", []);
+
+// Naya hook for Generated Timetable (with Swapping Logic)
+export const useTimetableState = () => {
+  const [timetable, setTimetable] = useLS<any | null>("tt.timetable", null);
+
+  // Magic Function: Do periods ko aapas mein swap karne ke liye
+  const swapPeriods = (
+    className: string,
+    dayIndex: number,
+    sourcePeriodIndex: number,
+    destinationPeriodIndex: number,
+  ) => {
+    if (!timetable) return;
+
+    // Create a deep copy taaki react properly re-render ho
+    const updatedTimetable = JSON.parse(JSON.stringify(timetable));
+    const classSchedule = updatedTimetable[className];
+
+    if (classSchedule && classSchedule[dayIndex]) {
+      const daySchedule = classSchedule[dayIndex];
+
+      // Swap the cells
+      const temp = daySchedule[sourcePeriodIndex];
+      daySchedule[sourcePeriodIndex] = daySchedule[destinationPeriodIndex];
+      daySchedule[destinationPeriodIndex] = temp;
+
+      // Naya timetable save kardo
+      setTimetable(updatedTimetable);
+    }
+  };
+
+  return [timetable, setTimetable, swapPeriods] as const;
+};

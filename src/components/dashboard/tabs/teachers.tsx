@@ -120,6 +120,7 @@ export function TeachersTab() {
       >
         <table className="w-full min-w-[700px] text-sm">
           {" "}
+          {/* min-w-[700px] ensures horizontal scroll on mobile */}
           <thead className="bg-secondary text-left text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">
             <tr>
               <th className="px-5 py-3">Name</th>

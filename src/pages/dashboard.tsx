@@ -7,6 +7,7 @@ import {
   Clock,
   Table,
   Sparkles,
+  UserMinus,
 } from "lucide-react";
 
 // Layout Imports
@@ -24,6 +25,7 @@ export default function Dashboard() {
     { id: "subjects", label: "Subjects", icon: BookOpen },
     { id: "periods", label: "Period Slots", icon: Clock },
     { id: "timetable", label: "Generate Timetable", icon: Table },
+    { id: "substitution", label: "Proxy Manager", icon: UserMinus }, // <-- NAYA TAB
   ];
 
   // URL se current tab nikalne ka logic

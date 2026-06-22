@@ -25,6 +25,13 @@ import {
 import { DAYS, type Timetable } from "@/lib/defaults";
 import { generateTimetable } from "@/lib/generator";
 import { exportTimetableExcel } from "@/lib/excel";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Tab =
   | "overview"
@@ -657,22 +664,28 @@ function TimetableTab() {
             </PrimaryBtn>
 
             {/* New Download Controls */}
-            <div className="flex items-center rounded-xl border border-border bg-card p-1 shadow-sm">
-              <select
+            <div className="flex items-center gap-2">
+              <Select
                 value={exportFormat}
-                onChange={(e) =>
-                  setExportFormat(e.target.value as "class" | "master")
+                onValueChange={(val) =>
+                  setExportFormat(val as "class" | "master")
                 }
-                className="bg-transparent text-sm font-medium text-foreground outline-none px-3 py-1.5 cursor-pointer rounded-lg hover:bg-secondary"
               >
-                <option value="class">Class-wise Format</option>
-                <option value="master">Master Format (Day-wise)</option>
-              </select>
-              <div className="w-[1px] h-5 bg-border mx-1"></div>
+                <SelectTrigger className="w-[200px] bg-card">
+                  <SelectValue placeholder="Select Format" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="class">Class-wise Format</SelectItem>
+                  <SelectItem value="master">
+                    Master Format (Day-wise)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
               <button
                 onClick={download}
                 disabled={!tt}
-                className="inline-flex items-center gap-2 px-4 py-1.5 text-sm font-semibold hover:bg-secondary disabled:opacity-40 rounded-lg text-foreground transition-colors"
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-40"
               >
                 <FileSpreadsheet className="h-4 w-4" /> Export
               </button>
